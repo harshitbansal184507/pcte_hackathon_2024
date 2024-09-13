@@ -130,40 +130,30 @@ elif market_analysis:
 }
     data['region'] = data['state'].map(state_to_region)
 
-    # Calculate total prescription volume by region
     total_prescription_volume_by_region = data.groupby('region')['prescription_volume'].sum().reset_index()
     total_prescription_volume_by_region.rename(columns={'prescription_volume': 'total_volume'}, inplace=True)
 
-    # Merge with original data to get total volume per region for each row
     data = pd.merge(data, total_prescription_volume_by_region, on='region')
 
-    # Calculate percentage of prescriptions for each insulin type
     data['percentage'] = data.apply(
         lambda row: (row['prescription_volume'] / row['total_volume']) * 100, axis=1
     )
 
-    # Filter data for Lyumjev insulin
     lyumjev_data = data[data['insulin_name'] == 'Lyumjev']
 
-    # Group by region and sum the percentages for Lyumjev
     lyumjev_percentage = lyumjev_data.groupby('region')['percentage'].sum().reset_index()
     lyumjev_percentage.rename(columns={'percentage': 'lyumjev_percentage'}, inplace=True)
 
-    # Filter data for other insulins
     other_insulins_data = data[data['insulin_name'] != 'Lyumjev']
     other_insulins_percentage = other_insulins_data.groupby('region')['percentage'].sum().reset_index()
     other_insulins_percentage.rename(columns={'percentage': 'other_percentage'}, inplace=True)
 
-    # Merge Lyumjev and other insulins data for stacked bar chart
     merged_summary = pd.merge(lyumjev_percentage, other_insulins_percentage, on='region')
 
-    # Plot stacked bar chart
     plt.figure(figsize=(10, 6))
 
-    # Plot Lyumjev percentage
     plt.bar(merged_summary['region'], merged_summary['lyumjev_percentage'], color='skyblue', label='Lyumjev')
 
-    # Plot other insulins percentage
     plt.bar(merged_summary['region'], merged_summary['other_percentage'], 
             bottom=merged_summary['lyumjev_percentage'], color='lightcoral', label='Other Insulins')
 
@@ -175,7 +165,6 @@ elif market_analysis:
     plt.grid(axis='y', linestyle='--', alpha=0.7)
     plt.tight_layout()
 
-    # Display the stacked bar chart in Streamlit
     st.pyplot(plt)
     
     
@@ -221,7 +210,6 @@ elif doctor_segmentation:
 elif feedback_vs_volume:
     st.title("Feedback vs Prescription Volume")
     st.write("Correlation between feedback received and prescription volume.")
-    # we hve used encoding here to encode feedback recieved 
     
     label_encoder = preprocessing.LabelEncoder() 
     data["feedback"]=label_encoder.fit_transform(data["feedback"])
@@ -230,8 +218,8 @@ elif feedback_vs_volume:
     y=data["feedback"]
     fig , ax = plt.subplots()
     ax.scatter(x, y, s=80, alpha=0.8, edgecolors="k")
-    b, a = np.polyfit(x, y, deg=1)  # linear fitting 
-    xseq = np.linspace(0, 10, num=100) # fpr creating a line 
+    b, a = np.polyfit(x, y, deg=1)  
+    xseq = np.linspace(0, 10, num=100) 
     ax.plot(xseq, a + b * xseq, color="k", lw=2.5)
     st.pyplot(fig)
 
@@ -267,7 +255,6 @@ elif demographic_insights:
         'Dadra and Nagar Haveli and Daman and Diu'
     ]
 
-    # Function to assign region based on state
     def get_region(state):
         if state in north:
             return 'North'
@@ -279,29 +266,23 @@ elif demographic_insights:
             return 'West'
         
 
-    # Add the 'region' column based on the state
     df['region'] = df['state'].apply(get_region)
 
-    # Filter for Lyumjev prescriptions
     lyumjev_df = df[df['insulin_name'] == 'Lyumjev']
 
-    # Aggregate prescription volumes by specialization and region
     heatmap_data = lyumjev_df.groupby(['specialization', 'region'])['prescription_volume'].sum().unstack().fillna(0)
 
-    # Plot heatmap in Streamlit
     st.write('Heatmap of Lyumjev Adoption by Specialization and Region in India')
 
     fig, ax = plt.subplots(figsize=(12, 8))
     sns.heatmap(heatmap_data, cmap='YlGnBu', annot=True, fmt=".1f", linewidths=.5, ax=ax)
 
-    # Set titles and labels
     ax.set_title('Heatmap of Lyumjev Adoption by Specialization and Region in India')
     ax.set_xlabel('Region')
     ax.set_ylabel('Specialization')
     plt.xticks(rotation=45, ha='right')
     plt.tight_layout()
 
-    # Display the plot in Streamlit
     st.pyplot(fig)
     
 
@@ -362,23 +343,17 @@ elif recommendation_report:
         }
         data['region'] = data['state'].apply(lambda x: next((r for r, states in region_mapping.items() if x in states), 'Unknown'))
 
-    # Remove 'Unknown' regions
     data = data[data['region'] != 'Unknown']
 
-    # Filter for Lyumjev
     lyumjev_data = data[data['insulin_name'] == 'Lyumjev']
 
-    # Aggregate prescription volume by region
     region_adoption = lyumjev_data.groupby('region')['prescription_volume'].sum().reset_index()
 
-    # Plot the regional adoption
     
 
-    # Compare Lyumjev to other insulins
-    # Aggregate prescription volume by insulin_name and region
+
     insulin_comparison = data.groupby(['insulin_name', 'region'])['prescription_volume'].sum().unstack().fillna(0)
 
-    # Plot the comparison
     st.write("### Comparison of Insulin Adoption by Region")
     fig, ax = plt.subplots(figsize=(12, 8))
     insulin_comparison.plot(kind='bar', stacked=True, colormap='tab20', ax=ax)
@@ -393,14 +368,11 @@ elif recommendation_report:
     st.write("The report indicates that while the overall insulin market is more substantial in the southern regions of India, the adoption rates for Lyumjev insulin are notably higher in the northern regions. This suggests that Cipla should consider the southern parts of India as a promising market for expanding its presence and increasing Lyumjev’s adoption. ")
 
 
-    # Analyze doctor behaviors if 'doctor_specialty' column exists
     if 'doctor_specialty' in data.columns:
-        # Remove 'Unknown' doctor specialties if any
         lyumjev_data = lyumjev_data[lyumjev_data['doctor_specialty'] != 'Unknown']
         
         doctor_behavior = lyumjev_data.groupby('doctor_specialty')['prescription_volume'].sum().reset_index()
 
-        # Plot doctor behavior analysis
         st.write("### Lyumjev Adoption by Doctor Specialty")
         fig, ax = plt.subplots(figsize=(12, 8))
         sns.barplot(data=doctor_behavior, x='doctor_specialty', y='prescription_volume', hue='doctor_specialty', palette='coolwarm', legend=False, ax=ax)
